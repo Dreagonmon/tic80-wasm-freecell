@@ -2,7 +2,7 @@
 # optional packages: binaryen
 
 BUILD = build
-TARGET_NAME = demo
+TARGET_NAME = pure-freecell
 TARGET_WAT = $(BUILD)/$(TARGET_NAME).wat
 TARGET_WASM = $(BUILD)/$(TARGET_NAME).wasm
 TARGET_CART = $(BUILD)/$(TARGET_NAME).tic
@@ -18,6 +18,7 @@ TIC80 = tic80
 
 # SRC += $(wildcard *.c littlefs/*.c)
 SRC += $(wildcard src/*.c)
+SRC += $(wildcard src/ui/*.c)
 SRC += $(wildcard src/env/*.c)
 SRC += $(wildcard src/libc/*.c)
 SRC += $(wildcard src/libc/math/*.c)
@@ -51,6 +52,7 @@ CFLAGS += -Os
 endif
 # include header
 CFLAGS += -Isrc
+CFLAGS += -Isrc/ui
 CFLAGS += -Isrc/env
 CFLAGS += -Isrc/libc
 
@@ -96,7 +98,7 @@ wat: $(TARGET_WAT)
 
 run: $(TARGET_WASM)
 	@$(RM_F) $(TARGET_CART)
-	@$(TIC80) --skip --soft --fs . --cmd="new wasm & load $(CONFIG_CART) & import binary $(TARGET_WASM) & save $(TARGET_CART) & run & exit"
+	@$(TIC80) --skip --soft --fs . --cmd="new wasm & load $(CONFIG_CART) & import binary $(TARGET_WASM) & save $(TARGET_CART) & run"
 
 cart: $(TARGET_WASM)
 	@$(RM_F) $(TARGET_CART)
