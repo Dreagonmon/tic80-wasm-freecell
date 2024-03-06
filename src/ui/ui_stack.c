@@ -14,14 +14,14 @@ bool ui_push_layer(UILayer layer) {
     }
     if (ui_stack_top > 0) {
         UILayer last = ui_stack[ui_stack_top - 1];
-        if (last->onNotFocus != NULL) {
-            last->onNotFocus();
+        if (last->on_not_focus != NULL) {
+            last->on_not_focus();
         }
     }
     ui_stack[ui_stack_top] = layer;
     ui_stack_top ++;
-    if (layer->onFocus != NULL) {
-        layer->onFocus();
+    if (layer->on_focus != NULL) {
+        layer->on_focus();
     }
     return true;
 }
@@ -31,14 +31,14 @@ bool ui_pop_layer(void) {
         return false;
     }
     UILayer layer = ui_stack[ui_stack_top - 1];
-    if (layer->onNotFocus != NULL) {
-        layer->onNotFocus();
+    if (layer->on_not_focus != NULL) {
+        layer->on_not_focus();
     }
     ui_stack_top --;
     if (ui_stack_top > 0) {
         UILayer last = ui_stack[ui_stack_top - 1];
-        if (last->onFocus != NULL) {
-            last->onFocus();
+        if (last->on_focus != NULL) {
+            last->on_focus();
         }
     } else {
         // exit

@@ -321,7 +321,13 @@ static bool fc_card_is_continue_collect(fc_Card upper, fc_Card lower) {
     if (upper.card == fc_EMPTY_CARD && lower.value == 0) {
         return true; // place at a empty cell
     }
-    return (upper.type == lower.type) && ((upper.value + 1) == lower.value);
+    if (upper.type != lower.type) {
+        return false;
+    }
+    if ((upper.value + 1) != lower.value) {
+        return false;
+    }
+    return true;
 }
 
 static void fc_push_history(fc_Game *game, fc_Action action) {
@@ -483,6 +489,22 @@ uint8_t fc_move(fc_Game *game, uint8_t m_from, uint8_t m_to) {
 }
 
 uint8_t fc_auto_collect(fc_Game *game) {
+    // get information, each color min value
+    uint8_t min_values[2] = {UINT8_MAX, UINT8_MAX};
+    uint8_t min_values_count[2] = {0, 0};
+    for (uint8_t idx = 0; idx < fc_COLLECT_CELL_COUNT; idx++) {
+        fc_Card card = game->collect_cell[idx];
+        if (card.card != fc_EMPTY_CARD) {
+            uint8_t color_type = card.type & 1;
+            min_values[color_type] = min(min_values[color_type], card.value);
+            min_values_count[color_type]++;
+        }
+    }
+    for (uint8_t color_type = 0; color_type < 2; color_type++) {
+        if (min_values_count[color_type] < 2) {
+            min_values[color_type] = 0;
+        }
+    }
     // check each collect cell
     for (uint8_t idx = 0; idx < fc_COLLECT_CELL_COUNT; idx++) {
         fc_Card target_card = game->collect_cell[idx];
@@ -496,6 +518,13 @@ uint8_t fc_auto_collect(fc_Game *game) {
             }
             // check cards
             if (fc_card_is_continue_collect(target_card, source_card)) {
+                if (source_card.value >= 2) { // A, 2 don't need check.
+                    uint8_t chk_color_type = !(source_card.type & 1); // check other color type
+                    if ((min_values[chk_color_type] + 1) < source_card.value) {
+                        // card value should not bigger than other color's +1
+                        continue;
+                    }
+                }
                 fc_Action action = ((fc_Action){.action = fc_EMPTY_ACTION});
                 action.from = fc_TABLE(col);
                 action.to = fc_COLLECT(idx);

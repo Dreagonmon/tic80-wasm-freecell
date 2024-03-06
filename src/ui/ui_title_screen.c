@@ -9,6 +9,7 @@
 #define MENU_OFFSET_TILE_Y (13)
 
 static int8_t sel_idx = 0;
+static bool layer_need_redraw = true;
 
 static void draw_title_screen(void) {
     // bg
@@ -17,7 +18,7 @@ static void draw_title_screen(void) {
     // menu
     uint8_t start_x = MENU_OFFSET_TILE_X * TILE_W;
     uint8_t start_y = MENU_OFFSET_TILE_Y * TILE_H;
-    print("New Game", start_x, start_y, COLOR_WHITE, false, 1, false);
+    print("Random Game", start_x, start_y, COLOR_WHITE, false, 1, false);
     start_y += TILE_H;
     print("Select Game", start_x, start_y, COLOR_WHITE, false, 1, false);
     start_y += TILE_H;
@@ -31,25 +32,25 @@ static void draw_title_screen(void) {
         1, 1);
 }
 
-static void onFocus(void) { draw_title_screen(); }
+static void on_focus(void) { layer_need_redraw = true; }
 
 static void tic(void) {
-    bool need_redraw = false;
-    if (btnp(BUTTON_CODE_P1_UP, TIC80_PARAM_IGNORE, TIC80_PARAM_IGNORE)) {
+    bool need_redraw = layer_need_redraw;
+    if (is_btn_pressed_once(BUTTON_CODE_P1_UP)) {
         sel_idx += MENU_COUNT - 1;
         sel_idx %= MENU_COUNT;
         need_redraw = true;
     }
-    if (btnp(BUTTON_CODE_P1_DOWN, TIC80_PARAM_IGNORE, TIC80_PARAM_IGNORE)) {
+    if (is_btn_pressed_once(BUTTON_CODE_P1_DOWN)) {
         sel_idx += 1;
         sel_idx %= MENU_COUNT;
         need_redraw = true;
     }
-    if (btnp(BUTTON_CODE_P1_A, TIC80_PARAM_IGNORE, TIC80_PARAM_IGNORE)) {
+    if (is_btn_pressed_once(BUTTON_CODE_P1_A)) {
         switch (sel_idx) {
         case 0:
             // new game
-            ui_push_layer(layer_freecell_game);
+            ui_push_layer(layer_random_freecell_game);
             return;
         case 3:
             // exit
@@ -59,9 +60,10 @@ static void tic(void) {
     }
     if (need_redraw) {
         draw_title_screen();
+        layer_need_redraw = false;
     }
 }
 
-static UILayerObject layerObject = {.onFocus = onFocus, .tic = tic};
+static UILayerObject layer_object = {.on_focus = on_focus, .tic = tic};
 
-UILayer layer_title_screen = &layerObject;
+UILayer layer_title_screen = &layer_object;

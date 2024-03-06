@@ -6,6 +6,7 @@
 #define TIC80_MAP_WIDTH (240)
 #define TILE_W (TILE_SIZE)
 #define TILE_H (TILE_SIZE)
+#define FONT_H (TILE_SIZE)
 #define COLOR_TRANSPARENT (0)
 #define COLOR_TABLE_BG (7)
 #define COLOR_BLACK (15)
@@ -31,5 +32,6 @@ extern uint8_t *transcolor0;
 
 uint16_t u_get_tile_id(uint8_t x, uint8_t y);
 uint16_t u_get_spr_id(uint8_t x, uint8_t y);
+bool is_btn_pressed_once(int32_t index);
 
 #endif

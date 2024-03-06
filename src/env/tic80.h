@@ -206,24 +206,24 @@ typedef struct {
 //      Constants
 // ---------------------------
 
-#define TILES_SIZE 0x2000;
-#define SPRITES_SIZE 0x2000;
-#define MAP_SIZE 32640;
-#define GAMEPADS_SIZE 4;
-#define MOUSE_SIZE 4;
-#define KEYBOARD_SIZE 4;
-#define SFX_STATE_SIZE 16;
-#define SOUND_REGISTERS_SIZE 72;
-#define WAVEFORMS_SIZE 256;
-#define SFX_SIZE 4224;
-#define MUSIC_PATTERNS_SIZE 11520;
-#define MUSIC_TRACKS_SIZE 408;
-#define SOUND_STATE_SIZE 4;
-#define STEREO_VOLUME_SIZE 4;
-#define PERSISTENT_MEMORY_SIZE 1024;
-#define SPRITE_FLAGS_SIZE 512;
-#define SYSTEM_FONT_SIZE 2048;
-#define WASM_FREE_RAM_SIZE 163840; // 160kb
+#define TILES_SIZE (0x2000)
+#define SPRITES_SIZE (0x2000)
+#define MAP_SIZE (32640)
+#define GAMEPADS_SIZE (4)
+#define MOUSE_SIZE (4)
+#define KEYBOARD_SIZE (4)
+#define SFX_STATE_SIZE (16)
+#define SOUND_REGISTERS_SIZE (72)
+#define WAVEFORMS_SIZE (256)
+#define SFX_SIZE (4224)
+#define MUSIC_PATTERNS_SIZE (11520)
+#define MUSIC_TRACKS_SIZE (408)
+#define SOUND_STATE_SIZE (4)
+#define STEREO_VOLUME_SIZE (4)
+#define PERSISTENT_MEMORY_SIZE (1024)
+#define SPRITE_FLAGS_SIZE (512)
+#define SYSTEM_FONT_SIZE (2048)
+#define WASM_FREE_RAM_SIZE (163840)
 
 // ---------------------------
 //      WASM Special Constants

@@ -6,8 +6,8 @@
 typedef void (*UIFunction)(void);
 
 typedef struct {
-    UIFunction onFocus;
-    UIFunction onNotFocus;
+    UIFunction on_focus;
+    UIFunction on_not_focus;
     UIFunction tic;
 } UILayerObject;
 typedef UILayerObject *UILayer;

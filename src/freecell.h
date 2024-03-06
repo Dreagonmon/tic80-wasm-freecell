@@ -90,6 +90,7 @@ typedef struct {
     fc_Action *history; // history always the last element
 } fc_Game;
 
+int fc_random_int(int32_t xn);
 fc_Game *fc_new_Game(uint8_t history_size);
 void fc_free_Game(fc_Game *game);
 void fc_game_init(fc_Game *game, int32_t rand_seed);
