@@ -1,5 +1,4 @@
 #include "freecell.h"
-#include <stdbool.h>
 #include <stdlib.h>
 
 #define max(a, b) ((a > b) ? a : b)
@@ -519,7 +518,8 @@ uint8_t fc_auto_collect(fc_Game *game) {
             // check cards
             if (fc_card_is_continue_collect(target_card, source_card)) {
                 if (source_card.value >= 2) { // A, 2 don't need check.
-                    uint8_t chk_color_type = !(source_card.type & 1); // check other color type
+                    uint8_t chk_color_type =
+                        !(source_card.type & 1); // check other color type
                     if ((min_values[chk_color_type] + 1) < source_card.value) {
                         // card value should not bigger than other color's +1
                         continue;
@@ -527,6 +527,27 @@ uint8_t fc_auto_collect(fc_Game *game) {
                 }
                 fc_Action action = ((fc_Action){.action = fc_EMPTY_ACTION});
                 action.from = fc_TABLE(col);
+                action.to = fc_COLLECT(idx);
+                action.size = 1;
+                fc_do_action(game, action);
+                fc_push_history(game, action);
+                return action.size;
+            }
+        }
+        // check free cell
+        for (uint8_t idx2 = 0; idx2 < fc_FREE_CELL_COUNT; idx2++) {
+            fc_Card source_card = game->free_cell[idx2];
+            if (fc_card_is_continue_collect(target_card, source_card)) {
+                if (source_card.value >= 2) { // A, 2 don't need check.
+                    uint8_t chk_color_type =
+                        !(source_card.type & 1); // check other color type
+                    if ((min_values[chk_color_type] + 1) < source_card.value) {
+                        // card value should not bigger than other color's +1
+                        continue;
+                    }
+                }
+                fc_Action action = ((fc_Action){.action = fc_EMPTY_ACTION});
+                action.from = fc_FREE(idx2);
                 action.to = fc_COLLECT(idx);
                 action.size = 1;
                 fc_do_action(game, action);
@@ -597,4 +618,17 @@ uint16_t fc_load_game(void *buf, uint16_t len, fc_Game *game) {
         fc_push_history(game, action);
     }
     return game_size + (history_size * sizeof(fc_Action));
+}
+
+bool fc_is_win(fc_Game *game) {
+    bool is_win = true;
+    for (uint8_t idx = 0; idx < fc_COLLECT_CELL_COUNT; idx++) {
+        fc_Card card = game->collect_cell[idx];
+        if (card.card == fc_EMPTY_CARD) {
+            is_win = false;
+        } else if (card.value != fc_VALUE_KING) {
+            is_win = false;
+        }
+    }
+    return is_win;
 }

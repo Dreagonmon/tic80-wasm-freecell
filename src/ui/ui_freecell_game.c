@@ -1,4 +1,5 @@
 #include "freecell.h"
+#include "global.h"
 #include "ui_helper.h"
 #include "ui_layers.h"
 #include "ui_stack.h"
@@ -29,7 +30,7 @@
 #define TILE_W_MENU (WIDTH_TILES - TILE_X_MENU_LEFT)
 #define MENU_OFFX (TILE_W * TILE_X_MENU_LEFT)
 #define MENU_W (TILE_W * TILE_W_MENU)
-#define SAVE_SLOT_COUNT (PERSISTENT_MEMORY_SIZE / SAVE_SIZE)
+#define SAVE_SLOT_COUNT ((PERSISTENT_MEMORY_SIZE - INFO_SAVE_SIZE) / SAVE_SIZE)
 #define MENU_SIZE ((SAVE_SLOT_COUNT * 2) + 1)
 
 typedef enum {
@@ -46,7 +47,8 @@ static fc_Game *game = &game_obj;
 static int8_t view_tile_start = 0; // 0 ~ 127
 static int8_t cursor_position = 0; // 0 ~ 127
 static int8_t token_position = -1; // 0 ~ 127
-static uint8_t ui_status = 255; // 0:normal 1:after_move 2:menu 255:need_redraw
+static uint8_t ui_status =
+    255; // 0:normal 1:after_move 2:menu 3:before_pop 255:need_redraw
 static uint8_t delay_ticks = 0;
 static int8_t menu_position = 0;
 
@@ -280,13 +282,14 @@ static void draw_menu(void) {
     offset_y += FONT_H;
     // menu items
     offset_x = MENU_OFFX + TILE_W;
-    offset_y = (HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2;
-    for (uint8_t save_slot = 0; save_slot < SAVE_SLOT_COUNT; save_slot ++) {
+    offset_y =
+        ((HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2) + (FONT_H * 2);
+    for (uint8_t save_slot = 0; save_slot < SAVE_SLOT_COUNT; save_slot++) {
         sprintf(line, "SAVE%1u", save_slot);
         print(line, offset_x, offset_y, COLOR_BLACK, false, 1, false);
         offset_y += FONT_H;
     }
-    for (uint8_t save_slot = 0; save_slot < SAVE_SLOT_COUNT; save_slot ++) {
+    for (uint8_t save_slot = 0; save_slot < SAVE_SLOT_COUNT; save_slot++) {
         sprintf(line, "LOAD%1u", save_slot);
         print(line, offset_x, offset_y, COLOR_BLACK, false, 1, false);
         offset_y += FONT_H;
@@ -300,10 +303,11 @@ static void draw_menu(void) {
     // cursor
     if (ui_status == 2) {
         menu_position %= MENU_SIZE;
-        offset_y = (HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2;
+        offset_y =
+            ((HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2) + (FONT_H * 2);
         offset_y += menu_position * FONT_H - 2;
-        spr(T_CUR2 + 3, MENU_OFFX, offset_y, transcolor0, 1, 1, false, false,
-        1, 1);
+        spr(T_CUR2 + 3, MENU_OFFX, offset_y, transcolor0, 1, 1, false, false, 1,
+            1);
     }
 }
 
@@ -455,7 +459,7 @@ static bool process_menu_button(void) {
         ui_status = 0;
         need_redraw = true;
         if (menu_position == MENU_SIZE - 1) {
-            ui_pop_layer();
+            ui_status = 3;
             need_redraw = false;
         } else if (menu_position >= SAVE_SLOT_COUNT) {
             // load
@@ -477,7 +481,11 @@ static void on_focus_random(void) {
     new_game_random();
 }
 
-static void on_not_focus(void) { ui_status = 255; }
+static void on_not_focus(void) {
+    if (ui_status != 3) {
+        ui_status = 255;
+    }
+}
 
 static void tic(void) {
     bool need_redraw = false;
@@ -486,6 +494,7 @@ static void tic(void) {
             need_redraw = true;
         }
     } else if (ui_status == 1) {
+        // after_move
         if (delay_ticks >= 15) {
             if (!fc_auto_collect(game)) {
                 ui_status = 0;
@@ -495,12 +504,25 @@ static void tic(void) {
         }
         delay_ticks++;
     } else if (ui_status == 2) {
+        // menu
         if (process_menu_button()) {
             need_redraw = true;
         }
+    } else if (ui_status == 3) {
+        // before_pop
+        ui_pop_layer();
+        ui_status = 255;
+        return;
     } else if (ui_status == 255) {
+        // need_redraw
         need_redraw = true;
         ui_status = 0;
+    }
+    if ((ui_status == 0 || ui_status == 1) && fc_is_win(game)) {
+        // game win
+        ui_status = 3;
+        need_redraw = false;
+        ui_push_layer(layer_win);
     }
     if (need_redraw) {
         draw();

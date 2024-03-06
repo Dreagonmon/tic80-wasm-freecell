@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Card */
 #define fc_COLUMN_COUNT ((uint8_t)8)
@@ -104,5 +105,6 @@ void fc_undo(fc_Game *game);
 uint16_t fc_get_save_size(uint8_t history_size);
 uint16_t fc_save_game(fc_Game *game, void *buf, uint16_t len);
 uint16_t fc_load_game(void *buf, uint16_t len, fc_Game *game);
+bool fc_is_win(fc_Game *game);
 
 #endif

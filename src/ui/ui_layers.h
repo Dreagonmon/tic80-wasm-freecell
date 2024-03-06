@@ -5,5 +5,6 @@
 
 extern UILayer layer_title_screen;
 extern UILayer layer_random_freecell_game;
+extern UILayer layer_win;
 
 #endif

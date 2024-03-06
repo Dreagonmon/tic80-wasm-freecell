@@ -9,6 +9,7 @@ typedef struct {
     UIFunction on_focus;
     UIFunction on_not_focus;
     UIFunction tic;
+    void *data;
 } UILayerObject;
 typedef UILayerObject *UILayer;
 
