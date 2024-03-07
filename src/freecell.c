@@ -39,6 +39,7 @@ void fc_free_Game(fc_Game *game) {
 }
 
 void fc_game_init(fc_Game *game, int32_t rand_seed) {
+    game->history_pointer = 0;
     game->seed = rand_seed;
     for (int i = 0; i < fc_FREE_CELL_COUNT; i++) {
         game->free_cell[i].card = fc_EMPTY_CARD;
