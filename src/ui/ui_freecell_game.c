@@ -593,6 +593,19 @@ static bool process_mouse_event(void) {
             return do_menu_cursor_action();
         }
     }
+    int8_t scroll = get_mouse_scroll();
+    int8_t tmp = scroll;
+    while (tmp > 0) {
+        do_move_cursor_up();
+        tmp --;
+    }
+    while (tmp < 0) {
+        do_move_cursor_down();
+        tmp ++;
+    }
+    if (scroll) {
+        return true;
+    }
     return false;
 }
 
