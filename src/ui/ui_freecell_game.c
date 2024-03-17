@@ -28,10 +28,13 @@
 #define TILE_EMPTY (0)
 #define TILE_X_MENU_LEFT max(MAP_BG_W, MAP_FG_W)
 #define TILE_W_MENU (WIDTH_TILES - TILE_X_MENU_LEFT)
-#define MENU_OFFX (TILE_W * TILE_X_MENU_LEFT)
 #define MENU_W (TILE_W * TILE_W_MENU)
 #define SAVE_SLOT_COUNT ((PERSISTENT_MEMORY_SIZE - INFO_SAVE_SIZE) / SAVE_SIZE)
-#define MENU_SIZE ((SAVE_SLOT_COUNT * 2) + 1)
+#define MENU_ITEM_COUNT ((SAVE_SLOT_COUNT * 2) + 1)
+#define MENU_H (MENU_ITEM_COUNT * FONT_H)
+#define MENU_INFO_OFFX (TILE_W * TILE_X_MENU_LEFT)
+#define MENU_OFFX ((TILE_W * TILE_X_MENU_LEFT) + TILE_W)
+#define MENU_OFFY (((HEIGHT - (FONT_H * 4) - MENU_H) / 2) + (FONT_H * 2))
 
 typedef enum {
     EMP_NONE = 0,
@@ -273,17 +276,16 @@ static void draw_menu(void) {
     uint8_t offset_y = 0;
     char line[20];
     // seed
-    print("seed: ", MENU_OFFX, 0, COLOR_BLACK, false, 1, false);
+    print("seed: ", MENU_INFO_OFFX, 0, COLOR_BLACK, false, 1, false);
     offset_y += FONT_H;
     sprintf(line, "%d", game->seed);
     uint8_t width = print(line, 0, -FONT_H, COLOR_BLACK, true, 1, true);
-    uint8_t offset_x = (MENU_W - width) + MENU_OFFX;
+    uint8_t offset_x = (MENU_W - width) + MENU_INFO_OFFX;
     print(line, offset_x, offset_y, COLOR_BLACK, true, 1, true);
     offset_y += FONT_H;
     // menu items
-    offset_x = MENU_OFFX + TILE_W;
-    offset_y =
-        ((HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2) + (FONT_H * 2);
+    offset_x = MENU_OFFX;
+    offset_y = MENU_OFFY;
     for (uint8_t save_slot = 0; save_slot < SAVE_SLOT_COUNT; save_slot++) {
         sprintf(line, "SAVE%1u", save_slot);
         print(line, offset_x, offset_y, COLOR_BLACK, false, 1, false);
@@ -297,18 +299,25 @@ static void draw_menu(void) {
     print("QUIT", offset_x, offset_y, COLOR_BLACK, false, 1, false);
     // help text
     offset_y = HEIGHT - FONT_H - FONT_H;
-    print("X: UNDO", MENU_OFFX, offset_y, COLOR_BLACK, false, 1, false);
+    print("X: UNDO", MENU_INFO_OFFX, offset_y, COLOR_BLACK, false, 1, false);
     offset_y += FONT_H;
-    print("Y: MENU", MENU_OFFX, offset_y, COLOR_BLACK, false, 1, false);
+    print("Y: MENU", MENU_INFO_OFFX, offset_y, COLOR_BLACK, false, 1, false);
     // cursor
     if (ui_status == 2) {
-        menu_position %= MENU_SIZE;
-        offset_y =
-            ((HEIGHT - (FONT_H * 4) - (MENU_SIZE * FONT_H)) / 2) + (FONT_H * 2);
+        menu_position %= MENU_ITEM_COUNT;
+        offset_y = MENU_OFFY;
         offset_y += menu_position * FONT_H - 2;
-        spr(T_CUR2 + 3, MENU_OFFX, offset_y, transcolor0, 1, 1, false, false, 1,
-            1);
+        spr(T_CUR2 + 3, MENU_INFO_OFFX, offset_y, transcolor0, 1, 1, false,
+            false, 1, 1);
     }
+    // on-screen button
+    offset_x = 0;
+    offset_y = 0;
+    spr(T_ICON_UP, offset_x, offset_y, transcolor0, 1, 1, false, false, 1, 1);
+    offset_y = TILE_H * 4;
+    spr(T_ICON_DOWN, offset_x, offset_y, transcolor0, 1, 1, false, false, 1, 1);
+    offset_y = HEIGHT - TILE_H;
+    spr(T_ICON_UNDO, offset_x, offset_y, transcolor0, 1, 1, false, false, 1, 1);
 }
 
 static void draw(void) {
@@ -337,93 +346,109 @@ static void load_from_slot(uint8_t slot) {
     fc_load_game(save_memory, SAVE_SIZE, game);
 }
 
+static void do_move_cursor_up(void) {
+    // move view up
+    view_tile_start -= 1;
+    view_tile_start = max(view_tile_start, 0);
+    // move cursor up
+    if (view_tile_start <= TILE_Y_UPPER_CURSOR &&
+        cursor_position < fc_MOVE_FREE_CELL) {
+        cursor_position += fc_MOVE_FREE_CELL;
+    }
+    limit_view_position(false);
+}
+
+static void do_move_cursor_down(void) {
+    // move cursor down
+    uint8_t new_cursor_position = cursor_position + fc_MOVE_FREE_CELL;
+    new_cursor_position %= fc_MOVE_FREE_CELL;
+    uint8_t cursor_col = new_cursor_position - fc_MOVE_TABLE;
+    int8_t cursor_tile_row = fc_get_column_size(game, cursor_col) - 1 +
+                             TILE_Y_TABLE_TOP + TILE_H_CARD - view_tile_start;
+    uint8_t max_rows = fc_get_max_column_size(game);
+    int8_t max_y =
+        ((int16_t)max_rows + TILE_H_CARD + TILE_Y_TABLE_TOP - HEIGHT_TILES);
+    if (cursor_position >= fc_MOVE_FREE_CELL && cursor_tile_row >= 0 &&
+        // new cursor in view, just move it
+        cursor_tile_row <= HEIGHT_TILES) {
+        cursor_position = new_cursor_position;
+    }
+    // move view down
+    view_tile_start += 1;
+    view_tile_start = min(view_tile_start, max_y);
+    limit_view_position(false);
+}
+
+static void do_move_cursor_left(void) {
+    if (cursor_position < fc_MOVE_FREE_CELL) {
+        cursor_position += fc_COLUMN_COUNT - 1;
+        cursor_position %= fc_COLUMN_COUNT;
+    } else {
+        cursor_position -= fc_MOVE_FREE_CELL;
+        cursor_position += (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT) - 1;
+        cursor_position %= (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT);
+        cursor_position += fc_MOVE_FREE_CELL;
+    }
+    limit_view_position(true);
+}
+
+static void do_move_cursor_right(void) {
+    if (cursor_position < fc_MOVE_FREE_CELL) {
+        cursor_position += 1;
+        cursor_position %= fc_COLUMN_COUNT;
+    } else {
+        cursor_position -= fc_MOVE_FREE_CELL;
+        cursor_position += 1;
+        cursor_position %= (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT);
+        cursor_position += fc_MOVE_FREE_CELL;
+    }
+    limit_view_position(true);
+}
+
+static void do_table_cursor_action(void) {
+    if (token_position < 0) {
+        if (cursor_position < fc_MOVE_FREE_CELL) {
+            if (fc_get_column_size(game, cursor_position - fc_MOVE_TABLE) > 0) {
+                token_position = cursor_position;
+            }
+        } else if (cursor_position < fc_MOVE_COLLECT_CELL) {
+            if (game->free_cell[cursor_position - fc_MOVE_FREE_CELL].card !=
+                fc_EMPTY_CARD) {
+                token_position = cursor_position;
+            }
+        }
+    } else {
+        if (cursor_position != token_position) {
+            fc_move(game, (uint8_t)token_position, (uint8_t)cursor_position);
+            ui_status = 1;
+            delay_ticks = 0;
+            token_position = -1;
+        }
+    }
+}
+
 static bool process_game_button(void) {
     bool need_redraw = false;
     // btnp() not good, need to use DMA or something else.
     // see https://github.com/nesbox/TIC-80/issues/2183
     if (is_btn_pressed_once(BUTTON_CODE_P1_UP)) {
-        // move view up
-        view_tile_start -= 4;
-        view_tile_start = max(view_tile_start, 0);
-        // move cursor up
-        if (view_tile_start <= TILE_Y_UPPER_CURSOR &&
-            cursor_position < fc_MOVE_FREE_CELL) {
-            cursor_position += fc_MOVE_FREE_CELL;
-        }
+        do_move_cursor_up();
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_DOWN)) {
-        // move cursor down
-        uint8_t new_cursor_position = cursor_position + fc_MOVE_FREE_CELL;
-        new_cursor_position %= fc_MOVE_FREE_CELL;
-        uint8_t cursor_col = new_cursor_position - fc_MOVE_TABLE;
-        int8_t cursor_tile_row = fc_get_column_size(game, cursor_col) - 1 +
-                                 TILE_Y_TABLE_TOP + TILE_H_CARD -
-                                 view_tile_start;
-
-        if (cursor_position >= fc_MOVE_FREE_CELL && cursor_tile_row >= 0 &&
-            // new cursor in view, just move it
-            cursor_tile_row < HEIGHT_TILES) {
-            cursor_position = new_cursor_position;
-        } else {
-            // move view down
-            uint8_t max_rows = fc_get_max_column_size(game);
-            int8_t max_y = ((int16_t)max_rows + TILE_H_CARD + TILE_Y_TABLE_TOP -
-                            HEIGHT_TILES);
-            view_tile_start += 4;
-            view_tile_start = min(view_tile_start, max_y);
-        }
-        limit_view_position(false);
+        do_move_cursor_down();
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_LEFT)) {
-        if (cursor_position < fc_MOVE_FREE_CELL) {
-            cursor_position += fc_COLUMN_COUNT - 1;
-            cursor_position %= fc_COLUMN_COUNT;
-        } else {
-            cursor_position -= fc_MOVE_FREE_CELL;
-            cursor_position += (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT) - 1;
-            cursor_position %= (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT);
-            cursor_position += fc_MOVE_FREE_CELL;
-        }
-        limit_view_position(true);
+        do_move_cursor_left();
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_RIGHT)) {
-        if (cursor_position < fc_MOVE_FREE_CELL) {
-            cursor_position += 1;
-            cursor_position %= fc_COLUMN_COUNT;
-        } else {
-            cursor_position -= fc_MOVE_FREE_CELL;
-            cursor_position += 1;
-            cursor_position %= (fc_FREE_CELL_COUNT + fc_COLLECT_CELL_COUNT);
-            cursor_position += fc_MOVE_FREE_CELL;
-        }
-        limit_view_position(true);
+        do_move_cursor_right();
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_A)) {
-        if (token_position < 0) {
-            if (cursor_position < fc_MOVE_FREE_CELL) {
-                if (fc_get_column_size(game, cursor_position - fc_MOVE_TABLE) >
-                    0) {
-                    token_position = cursor_position;
-                }
-            } else if (cursor_position < fc_MOVE_COLLECT_CELL) {
-                if (game->free_cell[cursor_position - fc_MOVE_FREE_CELL].card !=
-                    fc_EMPTY_CARD) {
-                    token_position = cursor_position;
-                }
-            }
-        } else {
-            if (cursor_position != token_position) {
-                fc_move(game, (uint8_t)token_position,
-                        (uint8_t)cursor_position);
-                ui_status = 1;
-                delay_ticks = 0;
-                token_position = -1;
-            }
-        }
+        do_table_cursor_action();
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_B)) {
@@ -443,37 +468,132 @@ static bool process_game_button(void) {
     return need_redraw;
 }
 
+static bool do_menu_cursor_action(void) {
+    ui_status = 0;
+    if (menu_position == MENU_ITEM_COUNT - 1) {
+        ui_status = 3;
+        return false; // exit, do not draw
+    } else if (menu_position >= SAVE_SLOT_COUNT) {
+        // load
+        load_from_slot(menu_position - SAVE_SLOT_COUNT);
+    } else {
+        // save
+        save_to_slot(menu_position);
+    }
+    return true;
+}
+
 static bool process_menu_button(void) {
     bool need_redraw = false;
     if (is_btn_pressed_once(BUTTON_CODE_P1_UP)) {
-        menu_position += MENU_SIZE - 1;
-        menu_position %= MENU_SIZE;
+        menu_position += MENU_ITEM_COUNT - 1;
+        menu_position %= MENU_ITEM_COUNT;
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_DOWN)) {
         menu_position += 1;
-        menu_position %= MENU_SIZE;
+        menu_position %= MENU_ITEM_COUNT;
         need_redraw = true;
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_A)) {
-        ui_status = 0;
-        need_redraw = true;
-        if (menu_position == MENU_SIZE - 1) {
-            ui_status = 3;
-            need_redraw = false;
-        } else if (menu_position >= SAVE_SLOT_COUNT) {
-            // load
-            load_from_slot(menu_position - SAVE_SLOT_COUNT);
-        } else {
-            // save
-            save_to_slot(menu_position);
-        }
+        need_redraw = do_menu_cursor_action();
     }
     if (is_btn_pressed_once(BUTTON_CODE_P1_B)) {
         ui_status = 0;
         need_redraw = true;
     }
     return need_redraw;
+}
+
+static uint8_t get_mouse_on_element(uint8_t mx, uint8_t my) {
+    if (mx < TILE_W) {
+        // on-screen button
+        if (my < (TILE_H * 1)) {
+            return 16 + 0 + 1;
+        } else if (my >= (TILE_H * 4) && my < (TILE_H * 5)) {
+            return 16 + 1 + 1;
+        } else if (my >= (HEIGHT - TILE_H) && my < HEIGHT) {
+            return 16 + 2 + 1;
+        }
+    }
+    if (mx >= (TILE_W * 1) && mx < MENU_OFFX) {
+        // convert to tile grid
+        mx /= TILE_W;
+        my /= TILE_H;
+        my += view_tile_start;
+        if (my >= 1 && my <= 3 && (mx % 3)) {
+            // first row
+            // 3 tile 1 col, skip every 3 tile
+            return (mx / 3) + fc_MOVE_FREE_CELL + 1;
+        }
+        if (my >= 5) {
+            if (mx % 3) {
+                // table
+                uint8_t col = mx / 3;
+                uint8_t col_size = fc_get_column_size(game, col);
+                if (col_size == 0 && my - 5 < 3) {
+                    return (mx / 3) + fc_MOVE_TABLE + 1;
+                }
+                if (col_size > 0 && my - 5 < col_size + 2) {
+                    return (mx / 3) + fc_MOVE_TABLE + 1;
+                }
+            }
+        }
+    }
+    if (mx >= MENU_OFFX && mx < WIDTH) {
+        // menu
+        if (my >= MENU_OFFY && my < (MENU_OFFY + MENU_H)) {
+            return 32 + ((my - MENU_OFFY) / FONT_H) + 1;
+        }
+    }
+    return 0;
+}
+
+static bool process_mouse_event(void) {
+    uint8_t mx, my, elem_id;
+    bool clicked = is_mouse_clicked(&mx, &my);
+    elem_id = get_mouse_on_element(mx, my);
+    if (mx != 0 || my != 0) { // for retroarch emu mouse, hide at 0,0
+        if (elem_id) {
+            FRAMEBUFFER->MOUSE_CURSOR = CURSOR_POINTER;
+        } else {
+            FRAMEBUFFER->MOUSE_CURSOR = CURSOR_ARROW;
+        }
+    } else {
+        FRAMEBUFFER->MOUSE_CURSOR = 0;
+    }
+    if (clicked) {
+        if (elem_id == 0) {
+            return 0;
+        }
+        elem_id -= 1;
+        if (elem_id < 16) {
+            // move card
+            cursor_position = elem_id;
+            do_table_cursor_action();
+            return true;
+        } else if (elem_id < 32) {
+            // on-screen button
+            uint8_t btn_id = elem_id - 16;
+            switch (btn_id) {
+            case 0:
+                do_move_cursor_up();
+                return true;
+            case 1:
+                do_move_cursor_down();
+                return true;
+            case 2:
+                fc_undo(game);
+                return true;
+            }
+        } else if (elem_id >= 32) {
+            // menu
+            uint8_t btn_id = elem_id - 32;
+            menu_position = btn_id;
+            return do_menu_cursor_action();
+        }
+    }
+    return false;
 }
 
 static void on_focus_random(void) {
@@ -489,8 +609,10 @@ static void on_not_focus(void) {
 
 static void tic(void) {
     bool need_redraw = false;
+    FRAMEBUFFER->MOUSE_CURSOR = CURSOR_ARROW; // config mouse cursor
+    // button
     if (ui_status == 0) {
-        if (process_game_button()) {
+        if (process_game_button() || process_mouse_event()) {
             need_redraw = true;
         }
     } else if (ui_status == 1) {
@@ -505,7 +627,7 @@ static void tic(void) {
         delay_ticks++;
     } else if (ui_status == 2) {
         // menu
-        if (process_menu_button()) {
+        if (process_menu_button() || process_mouse_event()) {
             need_redraw = true;
         }
     } else if (ui_status == 3) {
@@ -518,6 +640,7 @@ static void tic(void) {
         need_redraw = true;
         ui_status = 0;
     }
+    // ui status
     if ((ui_status == 0 || ui_status == 1) && fc_is_win(game)) {
         // game win
         ui_status = 3;

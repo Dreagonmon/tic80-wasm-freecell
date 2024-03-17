@@ -1,8 +1,10 @@
 #include <tic80.h>
+#include "ui_helper.h"
 
 static uint8_t transcolor0obj = {0};
 uint8_t *transcolor0 = &transcolor0obj;
 static uint8_t btn_status[4];
+static bool mouse_status = false;
 
 void u_set_map_at(uint8_t x, uint8_t y, uint8_t tile) { mset(x, y, tile); }
 
@@ -29,4 +31,31 @@ bool is_btn_pressed_once(int32_t index) {
         }
     }
     return pressed;
+}
+
+bool is_mouse_clicked(uint8_t *x, uint8_t *y) {
+    bool btn_left = ((bool) MOUSE->left);
+    uint8_t cx = (MOUSE->x) - 8;
+    uint8_t cy = (MOUSE->y) - 4;
+    if (mouse_status) {
+        if (!btn_left) {
+            mouse_status = false;
+        }
+    } else {
+        if (btn_left) {
+            mouse_status = true;
+            // click down
+            if (cx < WIDTH && cy < HEIGHT) {
+                // clicked inside the screen
+                *x = cx;
+                *y = cy;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int8_t get_mouse_scroll(void) {
+    return (int8_t) (MOUSE->v);
 }

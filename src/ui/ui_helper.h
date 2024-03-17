@@ -27,11 +27,18 @@
 #define T_CUR1 (260)
 #define T_CUR2 (264)
 #define T_CUR3 (268)
+#define T_ICON_UP (276)
+#define T_ICON_DOWN (277)
+#define T_ICON_UNDO (278)
+#define CURSOR_ARROW (16)
+#define CURSOR_POINTER (17)
 
 extern uint8_t *transcolor0;
 
 uint16_t u_get_tile_id(uint8_t x, uint8_t y);
 uint16_t u_get_spr_id(uint8_t x, uint8_t y);
 bool is_btn_pressed_once(int32_t index);
+bool is_mouse_clicked(uint8_t *x, uint8_t *y);
+int8_t get_mouse_scroll(void);
 
 #endif

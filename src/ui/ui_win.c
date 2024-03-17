@@ -19,7 +19,19 @@ static void tic(void) {
         print(text, offset_x, offset_y, COLOR_BLACK, false, 1, false);
     }
     layer_need_redraw = false;
+    // button
     if (is_btn_pressed_once(BUTTON_CODE_P1_B)) {
+        ui_pop_layer();
+    }
+    // mouse
+    uint8_t mx, my;
+    bool clicked = is_mouse_clicked(&mx, &my);
+    if (mx != 0 || my != 0) { // for retroarch emu mouse, hide at 0,0
+        FRAMEBUFFER->MOUSE_CURSOR = CURSOR_POINTER;
+    } else {
+        FRAMEBUFFER->MOUSE_CURSOR = 0;
+    }
+    if (clicked && mx < WIDTH && my < HEIGHT) {
         ui_pop_layer();
     }
 }
